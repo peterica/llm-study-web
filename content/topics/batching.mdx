@@ -1,0 +1,114 @@
+---
+id: batching
+title: "Batching — LLM 추론 처리량 극대화"
+slug: batching
+category: Inference & Optimization
+difficulty: intermediate
+readingTime: "14분"
+prerequisites: ["transformer", "kv-cache"]
+relatedLabs: []
+nextTopics: []
+---
+
+## Summary
+
+Batching은 여러 추론 요청을 묶어서 GPU에서 동시에 처리하는 기법이다. 개별 요청을 하나씩 처리하는 것보다 GPU 활용률과 전체 처리량(throughput)을 크게 높인다.
+
+## Why It Matters
+
+LLM 추론에서 GPU는 대부분의 시간을 메모리 접근에 소비한다(memory-bound). 단일 요청만 처리하면 GPU 연산 유닛의 활용률이 10~20%에 불과하다. Batching으로 여러 요청을 묶으면 같은 GPU로 2~10배 더 많은 요청을 처리할 수 있다.
+
+## Core Diagram
+
+```
+요청 1: "오늘 날씨는?" ─┐
+요청 2: "서울 인구는?" ─┼─→ [Batch 구성] → [GPU 동시 처리] → 응답 1, 2, 3
+요청 3: "AI란?"     ─┘
+
+vs.
+
+요청 1 → [GPU] → 응답 1
+요청 2 → [GPU] → 응답 2  (순차 처리: 3x 느림)
+요청 3 → [GPU] → 응답 3
+```
+
+## Concept Explanation
+
+### Static Batching
+
+가장 단순한 형태. 고정된 수의 요청을 모아서 한 번에 처리한다.
+
+| 장점 | 단점 |
+|------|------|
+| 구현 간단 | 짧은 응답이 긴 응답을 기다림 |
+| 예측 가능한 지연 시간 | GPU 메모리 낭비 |
+| 디버깅 용이 | 실시간 서비스에 부적합 |
+
+**문제점**: 배치 내 가장 긴 시퀀스가 끝날 때까지 모든 요청이 대기한다.
+
+### Continuous Batching (Dynamic Batching)
+
+요청이 완료될 때마다 새 요청을 즉시 배치에 추가하는 방식.
+
+```
+시간 →
+슬롯1: [요청A ████████]  [요청D ██████]  [요청F ███]
+슬롯2: [요청B ████]  [요청E ████████████████]
+슬롯3: [요청C ██████████████]  [요청G ████]
+```
+
+- 완료된 슬롯에 즉시 새 요청 삽입
+- GPU 유휴 시간 최소화
+- vLLM, TGI 등 최신 서빙 프레임워크의 기본 전략
+
+### Iteration-Level Batching
+
+토큰 생성의 각 반복(iteration)마다 배치를 재구성한다.
+
+- **Prefill 단계**: 프롬프트의 모든 토큰을 한 번에 처리 (compute-bound)
+- **Decode 단계**: 토큰을 하나씩 생성 (memory-bound)
+- Prefill과 Decode를 분리하여 최적화 가능
+
+### 주요 파라미터
+
+| 파라미터 | 설명 | 영향 |
+|---------|------|------|
+| `max_batch_size` | 동시 처리 최대 요청 수 | 높을수록 throughput↑, 지연↑ |
+| `max_waiting_time` | 배치 구성 대기 시간 | 높을수록 배치 크기↑, 지연↑ |
+| `max_tokens` | 배치 내 최대 토큰 수 | GPU 메모리에 의존 |
+
+## System Perspective
+
+LLM 서빙 시스템에서 Batching의 위치:
+
+1. **요청 큐**: 들어오는 요청을 큐에 저장
+2. **배치 스케줄러**: 큐에서 요청을 꺼내 배치 구성 (Continuous Batching)
+3. **GPU 실행**: 배치 단위로 Prefill/Decode 실행
+4. **결과 반환**: 완료된 요청의 응답을 즉시 반환 (스트리밍)
+
+서빙 프레임워크별 Batching 지원:
+- **vLLM**: PagedAttention + Continuous Batching
+- **TGI (Hugging Face)**: Continuous Batching + Token Streaming
+- **TensorRT-LLM**: In-flight Batching + FP8 지원
+- **Triton Inference Server**: Dynamic Batching + 모델 앙상블
+
+## Practical Insight
+
+- Continuous Batching은 Static Batching 대비 throughput 2~5x 향상
+- 배치 크기를 늘리면 throughput은 올라가지만, 개별 요청의 지연 시간(latency)도 증가한다
+- SLA가 있는 서비스에서는 latency 상한을 기준으로 배치 크기를 제한해야 한다
+- GPU 메모리가 배치 크기의 상한을 결정한다 — KV Cache가 메모리의 대부분을 차지
+- 요청 패턴(피크 시간, 평균 시퀀스 길이)에 따라 배치 전략을 조정해야 한다
+
+## Common Misunderstandings
+
+- 배치 크기가 크다고 항상 좋은 것은 아니다 — latency와 throughput은 트레이드오프 관계
+- Batching이 단일 요청의 응답 속도를 빠르게 하지 않는다 — 전체 처리량을 높이는 기법이다
+- Continuous Batching은 무한히 요청을 받는 것이 아니다 — GPU 메모리 한도 내에서 동작
+- 배치 내 모든 요청이 같은 모델/파라미터를 사용해야 한다
+
+## Connected Topics
+
+- **이전**: Transformer, KV Cache
+- **다음**: (고급: PagedAttention, Speculative Decoding)
+- **관련**: Quantization, Inference 최적화

@@ -1,0 +1,92 @@
+---
+id: dense-retrieval
+title: "Dense Retrieval — 벡터 기반 의미 검색"
+slug: dense-retrieval
+category: Retrieval Systems
+difficulty: intermediate
+readingTime: "15분"
+prerequisites: ["embedding", "similarity"]
+relatedLabs: ["retrieval-comparison"]
+nextTopics: ["hybrid-search", "hnsw"]
+---
+
+## Summary
+
+Dense Retrieval은 쿼리와 문서를 고밀도(dense) 벡터로 변환한 뒤, 벡터 공간에서의 유사도를 기반으로 관련 문서를 검색하는 기법이다.
+
+## Why It Matters
+
+전통적인 키워드 검색(BM25)은 동의어, 의역, 의미적 관계를 이해하지 못한다. Dense Retrieval은 "자동차"를 검색해도 "차량", "승용차" 관련 문서를 찾을 수 있다. RAG 시스템의 검색 품질을 결정하는 핵심 기술이다.
+
+## Core Diagram
+
+```
+쿼리: "서버 비용을 줄이려면?"
+       ↓
+  Embedding Model
+       ↓
+  Query Vector [0.12, -0.45, ...]
+       ↓
+  Vector DB (ANN 검색)
+       ↓
+  Top-K 유사 문서 반환
+    ├── "클라우드 비용 최적화 가이드" (0.92)
+    ├── "인프라 비용 절감 전략" (0.87)
+    └── "서버리스 아키텍처 도입기" (0.83)
+```
+
+## Concept Explanation
+
+### 키워드 검색 vs Dense Retrieval
+
+| 항목 | 키워드 검색 (BM25) | Dense Retrieval |
+|------|-------------------|-----------------|
+| 매칭 방식 | 정확한 단어 매칭 | 의미적 유사도 |
+| 동의어 처리 | 불가 (별도 사전 필요) | 자동 |
+| 학습 데이터 | 불필요 | 대규모 텍스트 필요 |
+| 인덱스 크기 | 작음 (역색인) | 큼 (벡터 저장) |
+| 검색 속도 | 매우 빠름 | ANN 알고리즘 의존 |
+
+### Bi-Encoder 아키텍처
+
+Dense Retrieval의 표준 아키텍처는 Bi-Encoder이다:
+- **Query Encoder**: 사용자 쿼리를 벡터로 변환
+- **Document Encoder**: 문서를 벡터로 변환
+- 두 인코더는 동일한 벡터 공간에 매핑하도록 학습된다
+- 추론 시 문서 벡터는 미리 계산(오프라인)하여 저장한다
+
+### Cross-Encoder와의 차이
+
+| 항목 | Bi-Encoder | Cross-Encoder |
+|------|-----------|---------------|
+| 속도 | 빠름 (벡터 사전 계산) | 느림 (쌍별 계산) |
+| 정확도 | 중간 | 높음 |
+| 용도 | 1차 검색 (Retrieval) | 2차 정렬 (Reranking) |
+
+## System Perspective
+
+RAG 파이프라인에서 Dense Retrieval은 다음과 같이 동작한다:
+1. **인덱싱**: 문서 → 청킹 → Embedding → Vector DB 저장
+2. **검색**: 쿼리 → Embedding → ANN 검색 → Top-K 문서 반환
+3. **후처리**: Reranker로 결과 재정렬 (선택사항)
+
+Vector DB 선택이 검색 성능에 큰 영향을 준다. Pinecone, Weaviate, Qdrant, Milvus 등이 대표적이다.
+
+## Practical Insight
+
+- Dense Retrieval만으로는 정확한 키워드 매칭이 약하다 — Hybrid Search를 고려하라
+- Embedding 모델의 학습 도메인과 검색 도메인이 다르면 성능이 크게 떨어진다
+- Top-K 값을 너무 크게 설정하면 노이즈가 늘어나 LLM 응답 품질이 하락한다
+- 벡터 인덱스는 데이터 변경 시 재인덱싱이 필요하다 — 실시간 업데이트 전략이 중요
+
+## Common Misunderstandings
+
+- Dense Retrieval이 항상 BM25보다 좋은 것은 아니다 — 짧은 키워드 쿼리에서는 BM25가 우수할 수 있다
+- 벡터 유사도가 높다고 반드시 관련성이 높은 것은 아니다 — Embedding 품질에 의존한다
+- ANN(Approximate Nearest Neighbor)은 정확한 최근접 검색이 아니다 — recall-speed 트레이드오프가 존재한다
+
+## Connected Topics
+
+- **이전**: Embedding, Similarity
+- **다음**: Hybrid Search, HNSW
+- **관련 실험**: Retrieval Comparison Lab

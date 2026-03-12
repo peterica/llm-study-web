@@ -1,0 +1,139 @@
+---
+id: cost-monitoring
+title: "Cost Monitoring — AI 시스템 비용 최적화"
+slug: cost-monitoring
+category: Production & AI DevOps
+difficulty: intermediate
+readingTime: "13분"
+prerequisites: ["rag-pipeline", "observability"]
+relatedLabs: []
+nextTopics: []
+---
+
+## Summary
+
+Cost Monitoring은 LLM 시스템의 API 호출 비용, 인프라 비용, 운영 비용을 실시간으로 추적하고 최적화하는 프로세스이다. 프로덕션 AI 서비스의 지속 가능성을 결정하는 핵심 요소이다.
+
+## Why It Matters
+
+LLM API 비용은 사용량에 비례하여 증가한다. 프로토타입에서 월 $100이던 비용이 프로덕션에서 월 $10,000 이상으로 폭증하는 경우가 흔하다. 비용을 관리하지 않으면 서비스가 수익성을 잃거나 갑작스럽게 중단될 수 있다.
+
+## Core Diagram
+
+```
+[비용 발생 포인트]
+     │
+     ├── LLM API 호출 ($$$)
+     │   ├── 입력 토큰 비용
+     │   └── 출력 토큰 비용
+     │
+     ├── Embedding API ($)
+     │   └── 인덱싱 + 검색 쿼리
+     │
+     ├── Vector DB ($$)
+     │   ├── 저장 비용
+     │   └── 쿼리 비용
+     │
+     └── 인프라 ($$)
+         ├── GPU 서버
+         └── 스토리지
+              ↓
+     [비용 대시보드] → [최적화 → 절감]
+```
+
+## Concept Explanation
+
+### LLM API 비용 구조
+
+| 모델 | 입력 (1M 토큰) | 출력 (1M 토큰) | 특성 |
+|------|---------------|---------------|------|
+| GPT-4o | $2.50 | $10.00 | 고품질, 고비용 |
+| GPT-4o-mini | $0.15 | $0.60 | 균형 |
+| Claude 3.5 Sonnet | $3.00 | $15.00 | 고품질 |
+| Claude 3.5 Haiku | $0.80 | $4.00 | 빠른 응답 |
+| 오픈소스 (Self-hosted) | GPU 비용 | GPU 비용 | 초기 투자 필요 |
+
+### 비용 최적화 전략
+
+**1. 모델 라우팅**
+- 쉬운 질문 → 작은 모델 (GPT-4o-mini, Haiku)
+- 어려운 질문 → 큰 모델 (GPT-4o, Sonnet)
+- 분류기(Classifier)로 자동 라우팅
+
+**2. 프롬프트 최적화**
+- 불필요한 지시 제거 → 입력 토큰 절감
+- System Prompt 캐싱 → 반복 비용 제거
+- 검색 결과 수(Top-K) 최적화 → Context 토큰 절감
+
+**3. 캐싱**
+- 동일 쿼리 응답 캐싱 (Semantic Cache)
+- Embedding 결과 캐싱
+- 자주 묻는 질문(FAQ) 사전 생성
+
+**4. Rate Limiting**
+- 사용자당 일일 요청 제한
+- 토큰 버짓 설정
+- 비용 상한 알림
+
+### 비용 계산 공식
+
+```
+월간 비용 = 일일_요청수 × 30 × (
+  평균_입력_토큰 × 입력_단가 +
+  평균_출력_토큰 × 출력_단가 +
+  Embedding_호출수 × Embedding_단가
+)
+```
+
+**예시**: 일 1,000건, 평균 입력 2,000 토큰, 출력 500 토큰 (GPT-4o)
+```
+1,000 × 30 × (2,000 × $2.50/1M + 500 × $10.00/1M)
+= 30,000 × ($0.005 + $0.005)
+= $300/월
+```
+
+## System Perspective
+
+비용 모니터링 시스템 구성:
+
+1. **수집**: 모든 API 호출에 토큰 수, 모델, 비용 태그 기록
+2. **집계**: 시간별/일별/사용자별/기능별 비용 집계
+3. **대시보드**: 실시간 비용 추이, 예산 대비 사용률
+4. **알림**: 일일 예산 80% 도달 시 경고, 100% 도달 시 차단
+5. **리포트**: 주간/월간 비용 리포트 자동 생성
+
+### 비용 태깅 패턴
+
+```json
+{
+  "request_id": "req-12345",
+  "model": "gpt-4o-mini",
+  "tokens_in": 1234,
+  "tokens_out": 256,
+  "cost_usd": 0.0034,
+  "feature": "customer-support",
+  "user_tier": "premium",
+  "timestamp": "2024-01-15T10:30:00Z"
+}
+```
+
+## Practical Insight
+
+- LLM 비용의 80%는 상위 20%의 쿼리에서 발생한다 — 긴 프롬프트/응답을 최적화하라
+- Semantic Cache만으로도 20~40% 비용 절감이 가능하다
+- 모델 라우팅으로 품질 저하 없이 50~60% 비용 절감 사례가 있다
+- Self-hosted 모델은 월 $5,000 이상의 API 비용이 발생할 때 손익분기점이 온다
+- 비용 알림은 "예산의 80%"에 설정하라 — 100%에 설정하면 이미 늦다
+
+## Common Misunderstandings
+
+- 저렴한 모델이 항상 비용 효율적인 것은 아니다 — 품질이 낮으면 재시도/에스컬레이션 비용 발생
+- 토큰 수만 보면 안 된다 — 같은 토큰이라도 모델별 단가가 다르다
+- 오픈소스 모델이 "무료"인 것은 아니다 — GPU 인프라 비용이 상당하다
+- 비용 최적화를 서비스 론칭 후에 하면 늦다 — 아키텍처 단계에서 고려해야 한다
+
+## Connected Topics
+
+- **이전**: Observability, RAG Pipeline
+- **다음**: (고급: MLOps, FinOps for AI)
+- **관련**: Case Study — 운영 가능한 RAG 시스템

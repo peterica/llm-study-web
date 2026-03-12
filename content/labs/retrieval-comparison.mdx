@@ -1,0 +1,32 @@
+---
+id: retrieval-comparison
+title: "Dense vs Hybrid Search Lab"
+slug: retrieval-comparison
+relatedTopics: ["dense-retrieval", "similarity"]
+difficulty: "advanced"
+estimatedTime: "25분"
+---
+
+## 실험 목표
+
+동일한 쿼리에 대해 BM25(키워드 검색), Dense Retrieval(의미 검색), Hybrid Search(결합)의 검색 결과를 비교하여 각 방법의 특성과 장단점을 이해합니다.
+
+## 조절 가능한 변수
+
+- **검색 쿼리**: 비용 절감, 모델 최적화, DB 성능 등 다양한 의도의 쿼리
+- **Hybrid 가중치 (α)**: Dense와 BM25의 결합 비율 조절
+- **Top-K**: 반환할 검색 결과 수
+
+## 핵심 관찰 포인트
+
+1. BM25는 쿼리와 정확히 일치하는 키워드가 있는 문서를 잘 찾음
+2. Dense Retrieval은 동의어나 유사 의미를 가진 문서도 찾아냄
+3. Hybrid Search는 두 방식의 장점을 결합하여 더 균형 잡힌 결과 반환
+4. α 값에 따라 결합 결과의 순위가 어떻게 변하는지 관찰
+
+## 실무적 시사점
+
+- 대부분의 프로덕션 RAG 시스템은 Hybrid Search (α=0.5~0.7)를 사용
+- 전문 용어가 많은 도메인에서는 BM25의 비중을 높이는 것이 효과적
+- 일반 자연어 쿼리가 주를 이루면 Dense의 비중을 높이는 것이 유리
+- Reranker를 추가하면 검색 품질을 한 단계 더 높일 수 있음

@@ -1,0 +1,91 @@
+---
+id: hnsw
+title: "HNSW — 고속 벡터 검색 알고리즘"
+slug: hnsw
+category: Retrieval Systems
+difficulty: advanced
+readingTime: "18분"
+prerequisites: ["dense-retrieval", "similarity"]
+relatedLabs: ["retrieval-comparison"]
+nextTopics: []
+---
+
+## Summary
+
+HNSW(Hierarchical Navigable Small World)는 고차원 벡터에서 근사 최근접 이웃(ANN)을 빠르게 찾는 그래프 기반 인덱스 알고리즘이다. 대부분의 Vector DB에서 기본 인덱스로 사용된다.
+
+## Why It Matters
+
+수백만~수억 개의 벡터에서 가장 유사한 벡터를 찾는 것은 O(n) 선형 탐색으로는 불가능하다. HNSW는 검색 시간을 O(log n)에 가깝게 줄이면서도 높은 recall을 유지한다. RAG 시스템의 검색 지연 시간을 결정하는 핵심 알고리즘이다.
+
+## Core Diagram
+
+```
+Layer 3:  ●─────────────●  (소수 노드, 장거리 연결)
+          │             │
+Layer 2:  ●───●─────●───●  (중간 노드)
+          │   │     │   │
+Layer 1:  ●─●─●─●─●─●─●─●  (다수 노드, 단거리 연결)
+          │ │ │ │ │ │ │ │
+Layer 0:  ●●●●●●●●●●●●●●●●  (전체 노드)
+
+검색: Layer 3 → Layer 2 → Layer 1 → Layer 0 (점진적 탐색)
+```
+
+## Concept Explanation
+
+### Small World 네트워크
+
+Small World 네트워크는 대부분의 노드가 직접 연결되지 않지만, 소수의 "허브" 노드를 통해 짧은 경로로 도달할 수 있는 그래프 구조이다. HNSW는 이 특성을 활용한다.
+
+### 계층적 구조
+
+HNSW의 핵심 아이디어는 여러 레이어의 Skip List와 유사한 계층 구조이다:
+- **최하위 레이어 (Layer 0)**: 모든 벡터 포함, 가까운 이웃끼리 연결
+- **상위 레이어**: 무작위로 선택된 일부 벡터만 포함, 더 먼 거리 연결
+- **레이어가 올라갈수록** 노드 수 감소, 연결 거리 증가
+
+### 주요 파라미터
+
+| 파라미터 | 설명 | 영향 |
+|---------|------|------|
+| `M` | 각 노드의 연결 수 | 높을수록 recall↑, 메모리↑ |
+| `efConstruction` | 인덱스 구축 시 탐색 범위 | 높을수록 품질↑, 시간↑ |
+| `efSearch` | 검색 시 탐색 범위 | 높을수록 recall↑, 지연↑ |
+
+### 검색 과정
+
+1. 최상위 레이어에서 시작 (진입점)
+2. 현재 레이어에서 greedy search로 가장 가까운 노드 탐색
+3. 더 이상 가까운 노드가 없으면 하위 레이어로 이동
+4. Layer 0에서 Top-K 결과 반환
+
+## System Perspective
+
+Vector DB에서 HNSW의 위치:
+1. **인덱스 구축**: 벡터 삽입 시 HNSW 그래프에 노드와 엣지 추가
+2. **검색**: 쿼리 벡터로 그래프를 탐색하여 ANN 결과 반환
+3. **스케일링**: 데이터 증가 시 그래프 크기와 메모리 사용량 비례 증가
+
+대안 알고리즘: IVF(Inverted File Index), PQ(Product Quantization), ScaNN
+
+## Practical Insight
+
+- `M=16, efConstruction=200`이 대부분의 경우 좋은 시작점이다
+- `efSearch`는 런타임에 조절 가능하다 — recall과 지연 시간의 실시간 트레이드오프
+- HNSW 인덱스는 메모리에 상주해야 한다 — 벡터 수 × 4byte × 차원 + 그래프 오버헤드
+- 1M 벡터(768차원)의 HNSW 인덱스는 약 3~4GB 메모리를 사용한다
+- 디스크 기반 HNSW(DiskANN)가 메모리 제약 환경의 대안이다
+
+## Common Misunderstandings
+
+- HNSW가 정확한 최근접 이웃을 보장하지 않는다 — "근사"(Approximate) 알고리즘이다
+- 인덱스 구축은 오래 걸리지만, 검색은 매우 빠르다 — O(log n) 수준
+- 고차원에서도 잘 동작하지만, 차원이 높을수록 효율이 떨어진다 (차원의 저주)
+- 삽입/삭제가 빈번한 경우 인덱스 품질이 저하될 수 있다 — 주기적 재구축 필요
+
+## Connected Topics
+
+- **이전**: Dense Retrieval, Similarity
+- **다음**: (고급 알고리즘: DiskANN, ScaNN)
+- **관련 실험**: Retrieval Comparison Lab

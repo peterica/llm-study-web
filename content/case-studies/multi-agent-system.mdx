@@ -1,0 +1,139 @@
+---
+id: multi-agent-system
+title: "Multi-Agent 시스템 — 복잡한 작업을 분할 정복하는 AI"
+slug: multi-agent-system
+---
+
+## 문제 정의
+
+고객 지원 업무에서 단일 LLM 호출로는 처리할 수 없는 복잡한 요청이 증가했다. "지난달 주문 중 환불 가능한 건을 찾아서, 환불 절차를 안내해줘"와 같은 요청은 여러 시스템 조회, 비즈니스 규칙 적용, 응답 생성이 순차적으로 필요했다.
+
+## 왜 기존 방법으로 부족했는가
+
+| 접근 | 한계 |
+|------|------|
+| 단일 LLM + 긴 프롬프트 | 복잡한 분기 처리 불가, 환각 위험 |
+| Rule-based 워크플로우 | 유연성 부족, 새로운 유형 대응 어려움 |
+| Function Calling 단일 체인 | 중간 실패 시 복구 어려움 |
+| RAG만으로 해결 | 실시간 데이터 조회와 액션 실행 불가 |
+
+## 시스템 구조
+
+```
+[사용자 요청]
+      ↓
+[Orchestrator Agent]
+  ├── 의도 분류
+  ├── 작업 분해 (Task Decomposition)
+  └── 에이전트 할당
+      ├── [Retrieval Agent] — 문서/FAQ 검색
+      ├── [Data Agent] — DB/API 조회 (주문, 결제 등)
+      ├── [Policy Agent] — 비즈니스 규칙 적용
+      └── [Response Agent] — 최종 응답 생성
+                ↓
+         [응답 검증 + 반환]
+```
+
+### 에이전트 간 통신
+
+```
+Orchestrator → Retrieval Agent: "환불 정책 문서 검색"
+Retrieval Agent → Orchestrator: {환불 정책 요약}
+
+Orchestrator → Data Agent: "고객 123의 지난달 주문 조회"
+Data Agent → Orchestrator: {주문 목록}
+
+Orchestrator → Policy Agent: "주문 목록에 환불 규칙 적용"
+Policy Agent → Orchestrator: {환불 가능 주문 + 사유}
+
+Orchestrator → Response Agent: "결과 종합하여 고객 응답 생성"
+Response Agent → Orchestrator: {최종 응답}
+```
+
+## 핵심 기술 선택 이유
+
+### Orchestrator 패턴
+
+ReAct(Reasoning + Acting) 패턴을 기반으로 한 Orchestrator Agent를 설계:
+- **Plan**: 사용자 요청을 분석하여 실행 계획 수립
+- **Execute**: 각 단계를 적합한 Agent에게 위임
+- **Verify**: 결과를 검증하고 필요시 재시도
+- **Respond**: 모든 결과를 종합하여 최종 응답 생성
+
+### 에이전트별 전문화
+
+각 에이전트는 독립적인 System Prompt, Tool 세트, 컨텍스트를 가진다:
+- **Retrieval Agent**: RAG 파이프라인 전담, 검색 최적화된 프롬프트
+- **Data Agent**: SQL 생성, API 호출 전담, 스키마 인식
+- **Policy Agent**: 비즈니스 규칙 문서를 컨텍스트로 보유, 판단 근거 기록
+- **Response Agent**: 톤앤매너 가이드, 다국어 지원
+
+### 상태 관리
+
+에이전트 간 메시지는 구조화된 JSON 형태로 교환하며, 전체 실행 상태를 Orchestrator가 관리:
+```json
+{
+  "task_id": "task-001",
+  "status": "in_progress",
+  "steps": [
+    {"agent": "retrieval", "status": "done", "result": "..."},
+    {"agent": "data", "status": "running"},
+    {"agent": "policy", "status": "pending"}
+  ]
+}
+```
+
+## 운영 시 발생한 이슈
+
+### 비용 폭발
+
+초기에는 모든 에이전트가 GPT-4를 사용하여, 단일 요청당 평균 4-5회 LLM 호출이 발생. 월 비용이 예상의 5배를 초과.
+
+**해결**: 에이전트별 모델 차등 적용.
+- Orchestrator: GPT-4 (판단 정확도 최우선)
+- Retrieval/Data Agent: GPT-3.5 (도구 호출 위주)
+- Policy Agent: GPT-4 (정확한 규칙 적용 필요)
+- Response Agent: GPT-3.5 (템플릿 기반 응답)
+
+비용 60% 절감.
+
+### 무한 루프
+
+Orchestrator가 결과에 만족하지 못해 같은 에이전트를 반복 호출하는 무한 루프 발생.
+
+**해결**: 최대 반복 횟수(max_iterations=5) 제한, 동일 쿼리 재호출 감지, 3회 이상 실패 시 사람에게 에스컬레이션.
+
+### 에이전트 간 컨텍스트 손실
+
+중간 단계의 결과가 다음 에이전트에 충분히 전달되지 않아 정보 손실 발생.
+
+**해결**: 구조화된 중간 결과 포맷 정의, Orchestrator가 각 단계의 핵심 정보를 요약하여 다음 에이전트에 전달하는 "컨텍스트 브리지" 패턴 도입.
+
+### 지연 시간
+
+4-5개 에이전트의 순차 호출로 평균 응답 시간 15초 이상.
+
+**해결**:
+- 독립적인 에이전트 호출은 병렬 실행 (Retrieval + Data 동시)
+- Streaming으로 부분 응답 즉시 전달
+- 평균 응답 시간 8초로 단축
+
+## 개선 포인트
+
+- 에이전트 실행 이력 기반의 자동 최적화 (불필요한 단계 스킵)
+- 사용자 피드백 루프를 통한 에이전트 프롬프트 자동 개선
+- 비용/품질 트레이드오프를 자동 조절하는 어댑티브 라우팅
+
+## 확장 가능성
+
+- **내부 업무 자동화**: IT 헬프데스크, HR 문의, 재무 보고서 생성
+- **데이터 분석**: 자연어 질의 → SQL → 차트 생성 → 인사이트 도출
+- **소프트웨어 개발**: 코드 리뷰, 테스트 생성, 문서화 자동화
+
+## 핵심 교훈
+
+1. **단일 에이전트의 한계를 인정하라**: 복잡한 작업은 전문화된 에이전트로 분할해야 한다
+2. **비용은 처음부터 설계하라**: 모델 선택, 호출 횟수, 캐싱 전략을 미리 계획
+3. **안전장치는 필수**: 무한 루프 방지, 타임아웃, 에스컬레이션 경로
+4. **관찰 가능성(Observability)이 핵심**: 에이전트 간 메시지 흐름을 추적할 수 있어야 디버깅 가능
+5. **점진적으로 시작하라**: 2개 에이전트로 시작하여 점차 전문화, 처음부터 복잡한 구조를 설계하지 말 것

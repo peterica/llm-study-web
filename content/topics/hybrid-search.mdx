@@ -1,0 +1,115 @@
+---
+id: hybrid-search
+title: "Hybrid Search — 키워드와 의미 검색의 결합"
+slug: hybrid-search
+category: Retrieval Systems
+difficulty: intermediate
+readingTime: "14분"
+prerequisites: ["dense-retrieval", "similarity"]
+relatedLabs: ["retrieval-comparison"]
+nextTopics: ["hnsw"]
+---
+
+## Summary
+
+Hybrid Search는 전통적인 키워드 검색(BM25)과 벡터 기반 의미 검색(Dense Retrieval)을 결합하여, 각 방식의 장점을 취하고 약점을 보완하는 검색 전략이다.
+
+## Why It Matters
+
+BM25는 정확한 키워드 매칭에 강하지만 동의어를 못 찾고, Dense Retrieval은 의미를 이해하지만 특정 용어 검색이 약하다. 프로덕션 RAG 시스템 대부분이 Hybrid Search를 채택하는 이유는 단일 방식으로는 다양한 쿼리 패턴을 모두 커버할 수 없기 때문이다.
+
+## Core Diagram
+
+```
+사용자 쿼리: "PostgreSQL 인덱스 최적화"
+         ↓
+    ┌────┴────┐
+    ↓         ↓
+  BM25      Dense
+(키워드)   (의미)
+    ↓         ↓
+ 결과 A    결과 B
+    └────┬────┘
+         ↓
+   Score Fusion
+  (α × Dense + (1-α) × BM25)
+         ↓
+   통합 결과 (Reranked)
+```
+
+## Concept Explanation
+
+### 왜 단일 방식은 부족한가
+
+| 쿼리 유형 | BM25 | Dense | Hybrid |
+|----------|------|-------|--------|
+| "PostgreSQL VACUUM" (정확한 용어) | 우수 | 보통 | 우수 |
+| "데이터베이스 느려졌을 때" (자연어) | 미흡 | 우수 | 우수 |
+| "DB 성능 최적화 방법" (혼합) | 보통 | 보통 | 우수 |
+
+### Score Fusion 방법
+
+**1. Weighted Sum (가중 합)**
+```
+hybrid_score = α × dense_score + (1 - α) × bm25_score
+```
+- α = 0.5~0.7이 일반적인 시작점
+- 도메인에 따라 튜닝 필요
+
+**2. Reciprocal Rank Fusion (RRF)**
+```
+RRF_score = Σ 1 / (k + rank_i)
+```
+- 각 검색 시스템의 순위를 기반으로 점수 계산
+- 스코어 정규화가 불필요한 장점
+- k=60이 표준 파라미터
+
+**3. Convex Combination**
+- Dense와 BM25 스코어를 각각 정규화(min-max)한 후 가중 합
+- 스코어 스케일이 다른 문제를 해결
+
+### Sparse + Dense 표현
+
+| 구분 | Sparse (BM25) | Dense (Embedding) |
+|------|--------------|-------------------|
+| 표현 | 고차원 희소 벡터 (TF-IDF) | 저차원 밀집 벡터 |
+| 매칭 | 정확한 토큰 일치 | 의미적 유사성 |
+| 인덱스 | 역색인 (Inverted Index) | ANN 인덱스 (HNSW) |
+| 장점 | 빠름, 해석 가능, 정확한 용어 | 동의어, 의역, 다국어 |
+| 단점 | 의미 이해 불가 | 특정 용어 매칭 약함 |
+
+## System Perspective
+
+프로덕션 RAG에서 Hybrid Search의 구현 패턴:
+
+1. **인덱싱**: 문서를 BM25 역색인과 Dense 벡터 인덱스에 동시 저장
+2. **검색**: 쿼리를 양쪽 시스템에 동시 전송 (병렬 실행)
+3. **퓨전**: 양쪽 결과를 Score Fusion으로 통합
+4. **Reranking**: Cross-Encoder로 최종 재순위화 (선택)
+
+Vector DB별 Hybrid Search 지원:
+- **Weaviate**: 네이티브 Hybrid Search (BM25 + Dense)
+- **Qdrant**: Sparse + Dense 동시 검색
+- **Pinecone**: Sparse-Dense 벡터 지원
+- **Elasticsearch**: kNN + BM25 결합
+
+## Practical Insight
+
+- α 값은 도메인과 쿼리 패턴에 따라 다르다 — A/B 테스트로 최적값을 찾아라
+- 전문 용어가 많은 도메인(의료, 법률)에서는 BM25 비중을 높이는 것이 효과적
+- RRF는 스코어 정규화 없이도 잘 동작하여 구현이 간단하다
+- Reranker를 Hybrid Search 뒤에 추가하면 검색 품질이 크게 향상된다
+- 비용 관점: BM25는 CPU만으로 동작하지만, Dense는 GPU 또는 대용량 메모리가 필요
+
+## Common Misunderstandings
+
+- Hybrid Search가 항상 단일 방식보다 좋은 것은 아니다 — 오히려 노이즈가 늘어날 수 있다
+- α 값이 0.5라고 "공평한 결합"인 것은 아니다 — BM25와 Dense의 스코어 분포가 다르기 때문
+- Hybrid Search는 검색 단계의 개선이다 — 전체 RAG 품질은 Chunking, Embedding, Prompt에도 의존한다
+- 모든 Vector DB가 Hybrid Search를 네이티브로 지원하는 것은 아니다 — 직접 구현이 필요할 수 있다
+
+## Connected Topics
+
+- **이전**: Dense Retrieval, Similarity
+- **다음**: HNSW
+- **관련 실험**: Retrieval Comparison Lab

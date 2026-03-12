@@ -1,0 +1,161 @@
+{
+  "paths": [
+    {
+      "id": "beginner",
+      "title": "입문자 경로",
+      "description": "LLM의 기본 개념부터 차근차근 시작합니다",
+      "audience": "LLM을 처음 접하는 학습자",
+      "estimatedTime": "4~6시간",
+      "steps": [
+        {
+          "order": 1,
+          "label": "Foundations",
+          "topics": ["transformer", "attention"],
+          "description": "LLM의 핵심 아키텍처 이해"
+        },
+        {
+          "order": 2,
+          "label": "Representation",
+          "topics": ["embedding", "similarity"],
+          "description": "텍스트가 벡터로 변환되는 과정"
+        },
+        {
+          "order": 3,
+          "label": "Retrieval 기초",
+          "topics": [],
+          "description": "의미 기반 검색의 원리"
+        },
+        {
+          "order": 4,
+          "label": "RAG 파이프라인",
+          "topics": ["rag-pipeline"],
+          "description": "검색 + 생성의 전체 흐름"
+        },
+        {
+          "order": 5,
+          "label": "실험 Lab",
+          "topics": [],
+          "labs": ["embedding-space", "temperature"],
+          "description": "직접 실험하며 개념 확인"
+        }
+      ]
+    },
+    {
+      "id": "developer",
+      "title": "개발자 경로",
+      "description": "시스템 구조를 빠르게 파악하고 구현합니다",
+      "audience": "AI 시스템을 구축하려는 개발자",
+      "estimatedTime": "6~8시간",
+      "steps": [
+        {
+          "order": 1,
+          "label": "System Map 탐색",
+          "topics": [],
+          "description": "전체 아키텍처 구조를 먼저 파악"
+        },
+        {
+          "order": 2,
+          "label": "Embedding & Retrieval",
+          "topics": ["embedding", "similarity"],
+          "description": "검색 시스템의 핵심 구현"
+        },
+        {
+          "order": 3,
+          "label": "RAG 구현",
+          "topics": ["rag-pipeline"],
+          "labs": ["chunking"],
+          "description": "RAG 파이프라인 직접 구축"
+        },
+        {
+          "order": 4,
+          "label": "추론 최적화",
+          "topics": ["kv-cache"],
+          "description": "성능과 비용 최적화"
+        },
+        {
+          "order": 5,
+          "label": "프로덕션 배포",
+          "topics": [],
+          "description": "운영 가능한 시스템으로 확장"
+        }
+      ]
+    },
+    {
+      "id": "ops",
+      "title": "운영자/SRE 경로",
+      "description": "운영 관점에서 AI 시스템을 이해합니다",
+      "audience": "AI 시스템을 운영하는 SRE/DevOps 엔지니어",
+      "estimatedTime": "3~4시간",
+      "steps": [
+        {
+          "order": 1,
+          "label": "System Map 개요",
+          "topics": [],
+          "description": "시스템 구성 요소와 흐름 파악"
+        },
+        {
+          "order": 2,
+          "label": "추론 파이프라인",
+          "topics": ["transformer", "kv-cache"],
+          "description": "추론 비용과 레이턴시의 원인 이해"
+        },
+        {
+          "order": 3,
+          "label": "운영 모니터링",
+          "topics": [],
+          "description": "Observability, Cost Monitoring"
+        },
+        {
+          "order": 4,
+          "label": "장애 대응",
+          "topics": [],
+          "description": "AI 시스템 특유의 장애 패턴 이해"
+        }
+      ]
+    }
+  ],
+  "tracks": [
+    {
+      "id": "foundations",
+      "title": "Foundations",
+      "description": "LLM의 기본 메커니즘을 이해합니다",
+      "order": 1,
+      "topicSlugs": ["transformer", "attention", "kv-cache"]
+    },
+    {
+      "id": "representation",
+      "title": "Representation",
+      "description": "텍스트를 벡터 공간으로 변환하는 과정",
+      "order": 2,
+      "topicSlugs": ["embedding", "similarity"]
+    },
+    {
+      "id": "retrieval",
+      "title": "Retrieval Systems",
+      "description": "의미 기반 검색 시스템의 구조와 알고리즘",
+      "order": 3,
+      "topicSlugs": ["dense-retrieval", "hybrid-search", "hnsw"]
+    },
+    {
+      "id": "generation",
+      "title": "Generation Systems",
+      "description": "RAG 파이프라인과 응답 생성",
+      "order": 4,
+      "topicSlugs": ["rag-pipeline", "prompt-engineering"]
+    },
+    {
+      "id": "inference",
+      "title": "Inference & Optimization",
+      "description": "LLM 추론 최적화 기법",
+      "order": 5,
+      "topicSlugs": ["quantization", "batching"]
+    },
+    {
+      "id": "production",
+      "title": "Production & AI DevOps",
+      "description": "운영 가능한 AI 시스템 구축",
+      "order": 6,
+      "topicSlugs": ["observability", "cost-monitoring"]
+    }
+  ]
+}

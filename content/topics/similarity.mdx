@@ -1,0 +1,88 @@
+---
+id: similarity
+title: "Similarity — 벡터 간 의미적 거리 측정"
+slug: similarity
+category: Representation
+difficulty: beginner
+readingTime: "10분"
+prerequisites: ["embedding"]
+relatedLabs: ["embedding-space"]
+nextTopics: ["rag-pipeline"]
+---
+
+## Summary
+
+Similarity(유사도)는 두 벡터 간의 거리를 측정하여 텍스트 간 의미적 유사성을 수치화하는 방법이다. Embedding으로 변환된 벡터를 비교하는 핵심 연산이다.
+
+## Why It Matters
+
+검색 시스템에서 "가장 관련 있는 문서"를 찾는 것은 곧 "쿼리 벡터와 가장 유사한 문서 벡터"를 찾는 것이다. 유사도 측정 방법의 선택이 검색 결과의 품질을 좌우한다.
+
+## Core Diagram
+
+```
+Query Vector  ─── Cosine Similarity ───  Document Vectors
+[0.2, 0.8]         cos(θ) = 0.95        [0.3, 0.7] ← 가장 유사
+                    cos(θ) = 0.42        [0.9, 0.1]
+                    cos(θ) = 0.88        [0.1, 0.9]
+```
+
+## Concept Explanation
+
+### 주요 유사도 측정 방법
+
+#### Cosine Similarity
+
+두 벡터 사이의 각도를 기반으로 유사도를 측정한다.
+
+- **범위**: -1 ~ 1 (1에 가까울수록 유사)
+- **특징**: 벡터의 크기가 아닌 방향만 비교
+- **용도**: 텍스트 유사도에서 가장 널리 사용
+
+#### Euclidean Distance (L2)
+
+두 벡터 간의 직선 거리를 측정한다.
+
+- **범위**: 0 ~ ∞ (0에 가까울수록 유사)
+- **특징**: 벡터의 크기도 영향
+- **용도**: 정규화된 벡터에서 사용
+
+#### Dot Product (내적)
+
+두 벡터의 내적을 계산한다.
+
+- **범위**: -∞ ~ ∞ (클수록 유사)
+- **특징**: 크기와 방향 모두 반영
+- **용도**: 정규화된 벡터에서 Cosine과 동일 결과
+
+### 어떤 방법을 선택할까?
+
+| 상황 | 추천 방법 |
+|------|----------|
+| 일반 텍스트 검색 | Cosine Similarity |
+| 정규화된 벡터 | Dot Product (더 빠름) |
+| 클러스터링 | Euclidean Distance |
+| Embedding 모델 권장값 확인 | 모델 문서 참조 |
+
+## System Perspective
+
+Vector DB(Pinecone, Milvus, Qdrant 등)는 내부적으로 유사도 검색을 최적화하는 인덱스 구조를 사용한다. HNSW, IVF 같은 ANN(Approximate Nearest Neighbor) 알고리즘으로 수백만 벡터에서도 밀리초 단위 검색이 가능하다.
+
+## Practical Insight
+
+- Embedding 모델 문서에서 권장하는 유사도 방법을 사용하라 (모델마다 다름)
+- 정규화된 벡터에서는 Cosine과 Dot Product가 동일 결과를 내므로 더 빠른 Dot Product 사용
+- 유사도 점수의 절대값보다 상대적 순위가 더 중요하다
+- 임계값(threshold)은 도메인별로 실험을 통해 결정해야 한다
+
+## Common Misunderstandings
+
+- Cosine Similarity 0.9가 "90% 유사"를 의미하는 것은 아니다 — 선형 해석 불가
+- 같은 의미라도 표현이 다르면 유사도가 낮을 수 있다 (Embedding 모델의 한계)
+- 유사도가 높다고 반드시 "관련성이 높다"는 뜻은 아니다 — Reranker가 필요한 이유
+
+## Connected Topics
+
+- **이전**: Embedding
+- **다음**: RAG Pipeline
+- **관련 실험**: Embedding Space Explorer Lab

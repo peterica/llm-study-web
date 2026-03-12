@@ -1,0 +1,32 @@
+---
+id: temperature
+title: "Temperature & Sampling Lab"
+slug: temperature
+relatedTopics: ["transformer", "prompt-engineering"]
+difficulty: "beginner"
+estimatedTime: "10분"
+---
+
+## 실험 목표
+
+LLM의 텍스트 생성에서 Temperature, Top-K, Top-P 파라미터가 출력 확률 분포에 미치는 영향을 직관적으로 이해합니다.
+
+## 조절 가능한 변수
+
+- **Temperature**: 확률 분포의 날카로움을 조절 (낮을수록 결정적, 높을수록 창의적)
+- **Top-K**: 확률이 높은 상위 K개 토큰만 후보로 사용
+- **Top-P (Nucleus Sampling)**: 누적 확률이 P 이하인 토큰만 후보로 사용
+
+## 핵심 관찰 포인트
+
+1. Temperature를 0에 가깝게 설정하면 가장 확률이 높은 토큰이 압도적으로 선택됨
+2. Temperature를 높이면 확률 분포가 균등해져 다양한 토큰이 선택될 수 있음
+3. Top-K를 낮추면 저확률 토큰이 완전히 제거됨
+4. Top-P는 동적으로 후보 토큰 수를 조절하여 더 자연스러운 샘플링 가능
+
+## 실무적 시사점
+
+- 사실 기반 Q&A에서는 Temperature 0~0.3이 적합
+- 창작, 브레인스토밍에서는 Temperature 0.7~1.2가 적합
+- Top-K와 Top-P를 함께 사용하면 품질과 다양성의 균형을 맞출 수 있음
+- Temperature가 너무 높으면 비문법적이거나 무관한 출력이 발생할 수 있음

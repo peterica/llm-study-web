@@ -1,0 +1,31 @@
+---
+id: attention-weights
+title: "Attention Weight 시각화 Lab"
+slug: attention-weights
+relatedTopics: ["attention", "transformer"]
+difficulty: "intermediate"
+estimatedTime: "15분"
+---
+
+## 실험 목표
+
+Self-Attention 메커니즘에서 각 토큰이 다른 토큰에 부여하는 가중치(Attention Weight)를 히트맵으로 시각화하여, 모델이 문맥을 어떻게 이해하는지 관찰합니다.
+
+## 조절 가능한 변수
+
+- **문장 선택**: 기본 문장, 대명사 참조, 부정 표현 등 다양한 언어 패턴
+- **행 선택**: 특정 토큰의 어텐션 분포를 상세 확인
+
+## 핵심 관찰 포인트
+
+1. 대명사("그는")가 선행사("철수는")에 높은 어텐션을 부여하는 패턴
+2. 부정어("아니다")가 수식 대상("좋은")에 주목하는 패턴
+3. 각 토큰이 자기 자신에게 부여하는 어텐션의 비중
+4. 문장 구조에 따라 어텐션 패턴이 어떻게 달라지는지
+
+## 실무적 시사점
+
+- Attention Weight를 분석하면 모델의 추론 과정을 일부 해석할 수 있음
+- 실제 LLM에서는 Multi-Head Attention으로 여러 패턴을 동시에 포착
+- 어텐션 분석은 디버깅과 모델 해석에 유용하지만, 인과 관계를 설명하진 않음
+- 프로덕션에서는 Attention Rollout, Attribution 등 고급 해석 기법도 사용

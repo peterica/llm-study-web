@@ -1,0 +1,70 @@
+---
+id: attention
+title: "Attention — 문맥을 이해하는 핵심 메커니즘"
+slug: attention
+category: Foundations
+difficulty: beginner
+readingTime: "12분"
+prerequisites: ["transformer"]
+relatedLabs: ["attention-weights"]
+nextTopics: ["kv-cache", "embedding"]
+---
+
+## Summary
+
+Attention은 입력 시퀀스의 각 토큰이 다른 모든 토큰과의 관계를 계산하여 문맥을 파악하는 메커니즘이다. Transformer 아키텍처의 가장 핵심적인 구성 요소다.
+
+## Why It Matters
+
+Attention이 없다면 모델은 "The bank of the river"에서 bank가 금융기관인지 강둑인지 구별할 수 없다. 문맥 의존적 의미 파악은 현대 LLM의 능력 그 자체다.
+
+## Core Diagram
+
+```
+Query (Q) ──┐
+Key   (K) ──┤──→ Attention Score ──→ Softmax ──→ Weighted Sum ──→ Output
+Value (V) ──┘
+```
+
+## Concept Explanation
+
+### Self-Attention의 동작 과정
+
+1. **Q, K, V 생성**: 각 토큰의 임베딩에 가중치 행렬을 곱하여 Query, Key, Value 벡터 생성
+2. **점수 계산**: Query와 모든 Key의 내적(dot product)으로 유사도 점수 산출
+3. **스케일링**: √d_k로 나누어 그래디언트 안정화
+4. **Softmax**: 점수를 확률 분포로 변환
+5. **가중 합산**: Value 벡터에 확률 가중치를 적용하여 최종 출력 생성
+
+### Multi-Head Attention
+
+단일 Attention 대신 여러 개의 Attention "헤드"를 병렬로 실행한다. 각 헤드는 서로 다른 관점(구문, 의미, 위치 등)에서 문맥을 파악할 수 있다.
+
+```
+Head 1: 주어-동사 관계에 집중
+Head 2: 형용사-명사 관계에 집중
+Head 3: 장거리 의존성에 집중
+→ 결합하여 풍부한 문맥 표현 생성
+```
+
+## System Perspective
+
+LLM 추론 시 Attention 연산은 전체 계산량의 상당 부분을 차지한다. 시퀀스 길이가 길어질수록 O(n²) 복잡도로 인해 메모리와 연산 비용이 급격히 증가한다. 이를 최적화하기 위해 KV Cache, Flash Attention 등의 기법이 사용된다.
+
+## Practical Insight
+
+- 컨텍스트 윈도우 크기는 Attention의 계산 범위와 직결된다
+- 프롬프트가 길수록 비용이 증가하는 이유가 바로 Attention의 O(n²) 특성 때문이다
+- 실무에서는 불필요한 토큰을 줄이는 것이 비용 최적화의 첫걸음이다
+
+## Common Misunderstandings
+
+- Attention은 "중요한 단어에 집중"하는 것이 아니라, 모든 토큰 간의 관계를 계산하는 것이다
+- Attention score가 높다고 해서 해당 토큰이 "중요"한 것은 아닐 수 있다 — 해석에 주의 필요
+- Self-Attention과 Cross-Attention은 다른 메커니즘이다
+
+## Connected Topics
+
+- **이전**: Transformer
+- **다음**: KV Cache, Embedding
+- **관련 실험**: Attention Weight 시각화 Lab

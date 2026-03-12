@@ -1,0 +1,113 @@
+---
+id: rag-pipeline
+title: "RAG Pipeline — 검색 기반 생성의 전체 흐름"
+slug: rag-pipeline
+category: Generation Systems
+difficulty: intermediate
+readingTime: "18분"
+prerequisites: ["embedding", "similarity"]
+relatedLabs: ["chunking"]
+nextTopics: []
+---
+
+## Summary
+
+RAG(Retrieval-Augmented Generation)은 LLM이 외부 지식을 검색하여 응답에 활용하는 아키텍처 패턴이다. LLM의 학습 데이터에 없는 최신 정보나 도메인 지식을 활용할 수 있게 해준다.
+
+## Why It Matters
+
+LLM은 학습 시점 이후의 정보를 알지 못하고, 사내 문서 같은 비공개 데이터에 접근할 수 없다. RAG은 이 문제를 해결하는 가장 실용적인 방법으로, 현재 대부분의 기업용 AI 서비스의 기반이다.
+
+## Core Diagram
+
+```
+                     ┌─ Indexing Pipeline ──┐
+                     │                      │
+Document → Chunking → Embedding → Vector DB
+                                      ↑
+User Query → Embedding → Similarity Search
+                              ↓
+                     Top-K Documents
+                              ↓
+                    Prompt = Query + Context
+                              ↓
+                         LLM Inference
+                              ↓
+                          Response
+```
+
+## Concept Explanation
+
+### 1. Indexing Pipeline (오프라인)
+
+문서를 검색 가능한 형태로 준비하는 단계:
+
+**Chunking**: 문서를 적절한 크기로 분할
+- 고정 크기 분할 (512 토큰 등)
+- 의미 단위 분할 (문단, 섹션)
+- 오버랩 설정 (청크 간 중복으로 문맥 보존)
+
+**Embedding**: 각 청크를 벡터로 변환
+
+**저장**: Vector DB에 벡터와 원본 텍스트 함께 저장
+
+### 2. Retrieval (온라인)
+
+사용자 쿼리에 관련된 문서를 검색하는 단계:
+
+1. 쿼리를 동일한 Embedding 모델로 벡터화
+2. Vector DB에서 유사 벡터 검색 (Top-K)
+3. (선택) Reranker로 결과 재순위화
+
+### 3. Generation (온라인)
+
+검색된 문서를 LLM에 전달하여 응답을 생성하는 단계:
+
+```
+시스템 프롬프트: "아래 문서를 참고하여 질문에 답변하세요."
+
+검색된 문서:
+[Document 1] ...
+[Document 2] ...
+[Document 3] ...
+
+사용자 질문: "..."
+```
+
+### 핵심 파라미터
+
+| 파라미터 | 영향 | 권장 범위 |
+|---------|------|----------|
+| Chunk Size | 검색 정밀도 vs 문맥 보존 | 256~1024 토큰 |
+| Chunk Overlap | 문맥 연결성 | 10~20% |
+| Top-K | 참조 문서 수 | 3~10개 |
+| Similarity Threshold | 최소 관련도 | 도메인별 실험 |
+
+## System Perspective
+
+프로덕션 RAG 시스템에서 고려해야 할 추가 요소:
+
+- **Hybrid Search**: Dense(벡터) + Sparse(키워드) 검색 결합
+- **Reranking**: Cross-Encoder로 검색 결과 정밀도 향상
+- **Query Rewriting**: 사용자 질문을 검색에 최적화된 형태로 변환
+- **Citation**: 응답에 출처 표시
+- **Evaluation**: 검색 품질(Recall, MRR)과 생성 품질(Faithfulness) 측정
+
+## Practical Insight
+
+- Chunk 크기가 너무 작으면 문맥을 잃고, 너무 크면 노이즈가 증가한다
+- Top-K를 늘리면 Recall은 좋아지지만 LLM의 컨텍스트 윈도우와 비용을 고려해야 한다
+- 검색 품질이 나쁘면 아무리 좋은 LLM을 써도 답변 품질이 낮다 — "Garbage In, Garbage Out"
+- 간단한 RAG으로 시작하고 성능 병목을 측정한 후에 복잡한 파이프라인으로 확장하라
+
+## Common Misunderstandings
+
+- RAG은 LLM을 학습시키는 것이 아니라 프롬프트에 맥락을 주입하는 것이다
+- 모든 질문에 RAG이 필요한 것은 아니다 — LLM이 이미 아는 내용에는 불필요
+- 검색된 문서가 많다고 좋은 것이 아니다 — 노이즈가 답변 품질을 떨어뜨릴 수 있다
+- RAG만으로 Hallucination이 완전히 해결되지는 않는다
+
+## Connected Topics
+
+- **이전**: Embedding, Similarity
+- **관련 실험**: Chunking Strategy Lab

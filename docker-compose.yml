@@ -1,0 +1,10 @@
+services:
+  web:
+    build: .
+    container_name: llm-study-web
+    ports:
+      - "3100:3000"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_SITE_URL=http://peterica.iptime.org:3100
