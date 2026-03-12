@@ -37,6 +37,8 @@ next-env.d.ts
 
 # AI Agent workspace (local only)
 CLAUDE.md
+CLAUDE_CODE_PROJECT_SETUP_PROMPT.md
 PLAN.md
 PROGRESS.md
 .claude/
+task/
